@@ -2,8 +2,6 @@
 
 local Module = {}
 
-local Utilities = require(script.Parent.Utilities)
-
 local WeldCache = {}
 
 local function AddToCache(Weld)
@@ -103,10 +101,6 @@ local OverlapParameters = OverlapParams.new()
 OverlapParameters.FilterType = Enum.RaycastFilterType.Whitelist
 
 local function Weld(Object: BasePart, DoNotWeld)
-	if Utilities:IsInSafeZone(Object.Position, Object.Size.X / 2) then
-		return
-	end
-	
 	local ExistingWelds = {}
 	if WeldCache[Object] then
 		for OtherObject, Weld in pairs(WeldCache[Object]) do
