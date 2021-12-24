@@ -64,8 +64,8 @@ end
 function Module:BreakJoints(Object: BasePart | Model)
 	if Object then
 		if Object:IsA("Model") then
-			local Count = 0
-			local CountTarget = #Object:GetChildren()
+			local Count: number = 0
+			local CountTarget: number = #Object:GetChildren()
 			
 			for _, SubObject in pairs(Object:GetChildren()) do
 				task.spawn(function()
@@ -97,7 +97,7 @@ function Module:GetJoinedParts(Object: BasePart | Model)
 	end
 end
 
-local OverlapParameters = OverlapParams.new()
+local OverlapParameters: OverlapParams = OverlapParams.new()
 OverlapParameters.FilterType = Enum.RaycastFilterType.Whitelist
 
 local function Weld(Object: BasePart, DoNotWeld)
