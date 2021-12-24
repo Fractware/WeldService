@@ -1,0 +1,15 @@
+{
+	"name": "WeldService",
+	"tree": {
+		"$className": "DataModel",
+
+		"ServerScriptService": {
+			"$className": "ReplicatedStorage",
+			"$ignoreUnknownInstances": true,
+
+			"WeldService": {
+				"$path": "src"
+			}
+		}
+	}
+}
