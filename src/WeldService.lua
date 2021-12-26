@@ -121,8 +121,6 @@ function Module:GetJoinedParts(Object: BasePart) -- Get Objects welded to the sp
 				WeldedObjects[OtherObject] = true -- Add to the WeldedParts.
 			end
 		end
-		
-		return WeldedParts -- Return the WeldedParts.
 	elseif Object:IsA("Model") then -- Check if Object is a Model.
 		for _, SubObject in pairs() do
 			if SubObject:IsA("BasePart") then
