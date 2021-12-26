@@ -4,6 +4,14 @@
 This service was created originally for [Free Build](https://www.roblox.com/games/4811583863/) for the then upcoming [deprecation of SurfaceTypes](https://devforum.roblox.com/t/changes-to-part-surfaces/334420). This change would also remove the MakeJoints and BreakJoints APIs which are critical for [Free Build](https://www.roblox.com/games/4811583863/) to function therefore, this service was created to provide a replacement for these APIs.
 Weld Service is being publicly released now so that others can easily gain access to methods like that of the old APIs. Hopefully with the contribution of others, this service can become an almost drop in replacement for the old APIs which developers can rely on to be performant, reliable & scalable.
 
+## Instructions
+
+### CanWeldAnchored
+You can set if anchored parts can weld to other anchored parts by toggling this variable. By default this is set to false as under normal circumstances, anchored parts do not need to be welded to other anchored parts & this setting will only incur a performance penalty for no gains. Only turn on if needed.
+
+### Whitelist
+You can whitelist objects to be welded by tagging them with the "Weldable" tag.
+
 ## Notes
 
 ### Performance
