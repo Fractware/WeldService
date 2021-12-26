@@ -210,7 +210,7 @@ local function Weld(Object: BasePart, DoNotWeld) -- Weld the object to other obj
 			SizeCount += 1
 		end)
 	end
-	|
+	
 	local SizeCountTarget: number = #Sizes
 	repeat task.wait() until SizeCount == SizeCountTarget -- Wait for all threads to finish.
 end
