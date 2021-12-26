@@ -2,8 +2,8 @@
 
 local Module = {
 	-- Welding padding variables.
-	InnerPadding: number = 0.05, -- Ignore this far into the object. (Allow slight merging)
-	OuterPadding: number = 0.1, -- Ignore everything past this point outside the object. (Weld slightly around the object)
+	InnerPadding = 0.05, -- Ignore this far into the object. (Allow slight merging)
+	OuterPadding = 0.1, -- Ignore everything past this point outside the object. (Weld slightly around the object)
 }
 
 local WeldCache = {}
