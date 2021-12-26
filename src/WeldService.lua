@@ -1,6 +1,7 @@
 --!strict
 
 local Module = {
+	CanWeldAnchored = false,
 	-- Welding padding variables.
 	InnerPadding = 0.05, -- Ignore this far into the object. (Allow slight merging)
 	OuterPadding = 0.1, -- Ignore everything past this point outside the object. (Weld slightly around the object)
@@ -190,7 +191,7 @@ local function Weld(Object: BasePart, DoNotWeld) -- Weld the object to other obj
 			
 			for _, Touching in pairs(TouchingObjects) do -- Loop through each object within welding distance.
 				task.spawn(function()
-					if Object ~= Touching then
+					if Object ~= Touching and (CanWeldAnchored or not (Object.Anchored  and Touching.Anchored)) then
 						-- Create the weld.
 						local NewWeld: WeldConstraint = Instance.new("WeldConstraint")
 						NewWeld.Part0 = Object
