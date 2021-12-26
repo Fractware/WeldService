@@ -122,8 +122,8 @@ function Module:GetJoinedParts(Object: BasePart) -- Get Objects welded to the sp
 			end
 		end
 	elseif Object:IsA("Model") then -- Check if Object is a Model.
-		for _, SubObject in pairs() do
-			if SubObject:IsA("BasePart") then
+		for _, SubObject in pairs(Object:GetDescendants()) do -- Loop through descendants in the model.
+			if SubObject:IsA("BasePart") then -- Check the SubObject is a BasePart.
 				for _, SubWeldedObject in pairs(Module:GetJoinedParts(SubObject)) do
 					WeldedObjects[SubWeldedObject] = true
 				end
