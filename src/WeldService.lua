@@ -122,13 +122,21 @@ function Module:GetJoinedParts(Object: BasePart) -- Get Objects welded to the sp
 			end
 		end
 	elseif Object:IsA("Model") then -- Check if Object is a Model.
+		local Count: number = 0
+		
 		for _, SubObject in pairs(Object:GetDescendants()) do -- Loop through descendants in the model.
-			if SubObject:IsA("BasePart") then -- Check the SubObject is a BasePart.
-				for _, SubWeldedObject in pairs(Module:GetJoinedParts(SubObject)) do -- Loop through the objects welded to SubObject.
-					WeldedObjects[SubWeldedObject] = true -- Add to the WeldedParts.
+			task.spawn(function()
+				if SubObject:IsA("BasePart") then -- Check the SubObject is a BasePart.
+					for _, SubWeldedObject in pairs(Module:GetJoinedParts(SubObject)) do -- Loop through the objects welded to SubObject.
+						WeldedObjects[SubWeldedObject] = true -- Add to the WeldedParts.
+						Count += 1
+					end
 				end
-			end
+			end)
 		end
+		
+		local CountTarget: number = #Object:GetDescendants()
+		repeat task.wait() until Count == CountTarget -- Wait for all threads to finish.
 	end
 	
 	return WeldedObjects -- Return the welded objects.
