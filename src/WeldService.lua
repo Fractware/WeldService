@@ -92,10 +92,12 @@ function Module:BreakJoints(Object: BasePart | Model) -- Remove welds from speci
 		if Object:IsA("BasePart") then -- Check if Object is a BasePart.
 			BreakJoints(Object) -- Break the joints of the Object.
 		elseif Object:IsA("Model") then -- Check if Object is a Model.
+			local Descendants = Object:GetDescendants()
+			
 			local Count: number = 0
 			
 			-- Remove welds from descendants in the model.
-			for _, SubObject in pairs(Object:GetDescendants()) do -- Loop through descendants in the model.
+			for _, SubObject in pairs(Descendants) do -- Loop through descendants in the model.
 				task.spawn(function()
 					if SubObject:IsA("BasePart") then -- Check the SubObject is a BasePart.
 						BreakJoints(SubObject) -- Break the joints of the descendant.
@@ -104,7 +106,7 @@ function Module:BreakJoints(Object: BasePart | Model) -- Remove welds from speci
 				end)
 			end
 			
-			local CountTarget: number = #Object:GetDescendants()
+			local CountTarget: number = #Descendants
 			repeat task.wait() until Count == CountTarget -- Wait for all threads to finish.
 		end
 	end
@@ -122,9 +124,11 @@ function Module:GetJoinedParts(Object: BasePart) -- Get Objects welded to the sp
 			end
 		end
 	elseif Object:IsA("Model") then -- Check if Object is a Model.
+		local Descendants = Object:GetDescendants()
+		
 		local Count: number = 0
 		
-		for _, SubObject in pairs(Object:GetDescendants()) do -- Loop through descendants in the model.
+		for _, SubObject in pairs(Descendants) do -- Loop through descendants in the model.
 			task.spawn(function()
 				if SubObject:IsA("BasePart") then -- Check the SubObject is a BasePart.
 					for _, SubWeldedObject in pairs(Module:GetJoinedParts(SubObject)) do -- Loop through the objects welded to SubObject.
@@ -135,7 +139,7 @@ function Module:GetJoinedParts(Object: BasePart) -- Get Objects welded to the sp
 			end)
 		end
 		
-		local CountTarget: number = #Object:GetDescendants()
+		local CountTarget: number = #Descendants
 		repeat task.wait() until Count == CountTarget -- Wait for all threads to finish.
 	end
 	
@@ -225,9 +229,11 @@ function Module:MakeJoints(Object: BasePart | Model, DoNotWeld) -- Weld the obje
 	if Object:IsA("BasePart") then -- Check if Object is a BasePart.
 		Weld(Object, DoNotWeld) -- Weld the Object.
 	elseif Object:IsA("Model") then -- Check if Object is a Model.
+		local Descendants = Object:GetDescendants()
+		
 		local SubObjectCount: number = 0
 		
-		for _, SubObject in pairs(Object:GetDescendants()) do -- Loop through descendants in the model.
+		for _, SubObject in pairs(Descendants) do -- Loop through descendants in the model.
 			task.spawn(function()
 				if SubObject:IsA("BasePart") and SubObject ~= Object.PrimaryPart then -- Check the SubObject is a BasePart & is not the PrimaryPart.
 					Weld(SubObject, DoNotWeld) -- Weld the Object.
@@ -236,7 +242,7 @@ function Module:MakeJoints(Object: BasePart | Model, DoNotWeld) -- Weld the obje
 			end)
 		end
 		
-		local SubObjectCountTarget: number = #Object:GetDescendants()
+		local SubObjectCountTarget: number = #Descendants
 		repeat task.wait() until SubObjectCount == SubObjectCountTarget -- Wait for all threads to finish.
 	end
 	
