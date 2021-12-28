@@ -92,21 +92,20 @@ function Module:BreakJoints(Object: BasePart | Model) -- Remove welds from speci
 		if Object:IsA("BasePart") then -- Check if Object is a BasePart.
 			BreakJoints(Object) -- Break the joints of the Object.
 		elseif Object:IsA("Model") then -- Check if Object is a Model.
-			local Descendants = Object:GetDescendants()
-			
+			local CountTarget: number = 0
 			local Count: number = 0
 			
 			-- Remove welds from descendants in the model.
-			for _, SubObject in pairs(Descendants) do -- Loop through descendants in the model.
+			for _, SubObject in pairs(Object:GetDescendants()) do -- Loop through descendants in the model.
 				task.spawn(function()
 					if SubObject:IsA("BasePart") then -- Check the SubObject is a BasePart.
+						CountTarget += 1
 						BreakJoints(SubObject) -- Break the joints of the descendant.
 						Count += 1
 					end
 				end)
 			end
 			
-			local CountTarget: number = #Descendants
 			repeat task.wait() until Count == CountTarget -- Wait for all threads to finish.
 		end
 	end
@@ -124,14 +123,14 @@ function Module:GetJoinedParts(Object: BasePart) -- Get Objects welded to the sp
 			end
 		end
 	elseif Object:IsA("Model") then -- Check if Object is a Model.
-		local Descendants = Object:GetDescendants()
-		
+		local CountTarget: number = 0
 		local Count: number = 0
 		
-		for _, SubObject in pairs(Descendants) do -- Loop through descendants in the model.
+		for _, SubObject in pairs(Object:GetDescendants()) do -- Loop through descendants in the model.
 			task.spawn(function()
 				if SubObject:IsA("BasePart") then -- Check the SubObject is a BasePart.
 					for _, SubWeldedObject in pairs(Module:GetJoinedParts(SubObject)) do -- Loop through the objects welded to SubObject.
+						CountTarget += 1
 						WeldedObjects[SubWeldedObject] = true -- Add to the WeldedParts.
 						Count += 1
 					end
@@ -139,7 +138,6 @@ function Module:GetJoinedParts(Object: BasePart) -- Get Objects welded to the sp
 			end)
 		end
 		
-		local CountTarget: number = #Descendants
 		repeat task.wait() until Count == CountTarget -- Wait for all threads to finish.
 	end
 	
