@@ -92,14 +92,15 @@ function Module:BreakJoints(Object: BasePart | Model) -- Remove welds from speci
 		if Object:IsA("BasePart") then -- Check if Object is a BasePart.
 			BreakJoints(Object) -- Break the joints of the Object.
 		elseif Object:IsA("Model") then -- Check if Object is a Model.
-			local CountTarget: number = 0
+			local Descendants = Object:GetDescendants()
+			
+			local CountTarget: number = #Descendants
 			local Count: number = 0
 			
 			-- Remove welds from descendants in the model.
-			for _, SubObject in pairs(Object:GetDescendants()) do -- Loop through descendants in the model.
+			for _, SubObject in pairs(Descendants) do -- Loop through descendants in the model.
 				task.spawn(function()
 					if SubObject:IsA("BasePart") then -- Check the SubObject is a BasePart.
-						CountTarget += 1
 						BreakJoints(SubObject) -- Break the joints of the descendant.
 						Count += 1
 					end
@@ -123,14 +124,15 @@ function Module:GetJoinedParts(Object: BasePart) -- Get Objects welded to the sp
 			end
 		end
 	elseif Object:IsA("Model") then -- Check if Object is a Model.
-		local CountTarget: number = 0
+		local Descendants = Object:GetDescendants()
+		
+		local CountTarget: number = #Descendants
 		local Count: number = 0
 		
-		for _, SubObject in pairs(Object:GetDescendants()) do -- Loop through descendants in the model.
+		for _, SubObject in pairs(Descendants) do -- Loop through descendants in the model.
 			task.spawn(function()
 				if SubObject:IsA("BasePart") then -- Check the SubObject is a BasePart.
 					for _, SubWeldedObject in pairs(Module:GetJoinedParts(SubObject)) do -- Loop through the objects welded to SubObject.
-						CountTarget += 1
 						WeldedObjects[SubWeldedObject] = true -- Add to the WeldedParts.
 						Count += 1
 					end
@@ -152,15 +154,24 @@ local function Weld(Object: BasePart, DoNotWeld) -- Weld the object to other obj
 	local Whitelist = game:GetService("CollectionService"):GetTagged("Weldable") -- Only check Weldable objects.
 	
 	-- Remove objects specified in the DoNotWeld list.
+	local CountTarget: number = #Whitelist
+	local Count: number = 0
+	
 	if DoNotWeld then
 		for Index, FilterDescendant in pairs(Whitelist) do
-			for _, DoNotWeldPart in pairs(DoNotWeld) do
-				if DoNotWeldPart == FilterDescendant then
-					table.remove(Whitelist, Index)
+			task.spawn(function()
+				for _, DoNotWeldPart in pairs(DoNotWeld) do
+					if DoNotWeldPart == FilterDescendant then
+						table.remove(Whitelist, Index)
+					end
 				end
-			end
+				
+				Count += 1
+			end)
 		end
 	end
+	
+	repeat task.wait() until Count == CountTarget
 	
 	-- Check for existing welds & ignore those objects.
 	local ExistingWelds = {}
@@ -171,25 +182,35 @@ local function Weld(Object: BasePart, DoNotWeld) -- Weld the object to other obj
 	end
 	
 	-- Remove ExistingWelds from the Whitelist.
+	local CountTarget: number = 0
+	local Count: number = 0
+	
 	for _, ExistingWeld in pairs(ExistingWelds) do
-		for Index, Weldable in pairs(Whitelist) do
-			if ExistingWeld.Part0 == Weldable or ExistingWeld.Part1 == Weldable then
-				table.remove(Whitelist, Index)
+		task.spawn(function()
+			for Index, Weldable in pairs(Whitelist) do
+				if ExistingWeld.Part0 == Weldable or ExistingWeld.Part1 == Weldable then
+					table.remove(Whitelist, Index)
+				end
 			end
-		end
+			
+			Count += 1
+		end)
 	end
+	
+	repeat task.wait() until Count == CountTarget
 	
 	OverlapParameters.FilterDescendantsInstances = Whitelist -- Set the OverlapParameters to only check the Whitelist.
 	
-	local SizeCount: number = 0
-	
-	local InnerPadding: number = Module.InnerPadding
-	local OuterPadding: number = Module.OuterPadding
+	-- Welding.
+	local InnerPadding: number = Module.InnerPadding -- Cache InnerPadding as a variable.
+	local OuterPadding: number = Module.OuterPadding -- Cache OuterPadding as a variable.
 	local Sizes = {
 		Object.Size + Vector3.new(OuterPadding, -InnerPadding, -InnerPadding),
 		Object.Size + Vector3.new(-InnerPadding, OuterPadding, -InnerPadding),
 		Object.Size + Vector3.new(-InnerPadding, -InnerPadding, OuterPadding),
 	}
+	
+	local SizeCount: number = 0
 	
 	for _, Size in pairs(Sizes) do -- Loop through each axis.
 		task.spawn(function()
@@ -236,6 +257,7 @@ function Module:MakeJoints(Object: BasePart | Model, DoNotWeld) -- Weld the obje
 				if SubObject:IsA("BasePart") and SubObject ~= Object.PrimaryPart then -- Check the SubObject is a BasePart & is not the PrimaryPart.
 					Weld(SubObject, DoNotWeld) -- Weld the Object.
 				end
+				
 				SubObjectCount += 1
 			end)
 		end
