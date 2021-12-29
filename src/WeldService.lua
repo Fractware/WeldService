@@ -182,7 +182,7 @@ local function Weld(Object: BasePart, DoNotWeld) -- Weld the object to other obj
 	end
 	
 	-- Remove ExistingWelds from the Whitelist.
-	local CountTarget: number = 0
+	local CountTarget: number = #ExistingWelds
 	local Count: number = 0
 	
 	for _, ExistingWeld in pairs(ExistingWelds) do
