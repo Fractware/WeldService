@@ -154,10 +154,10 @@ local function Weld(Object: BasePart, DoNotWeld) -- Weld the object to other obj
 	local Whitelist = game:GetService("CollectionService"):GetTagged("Weldable") -- Only check Weldable objects.
 	
 	-- Remove objects specified in the DoNotWeld list.
-	local CountTarget: number = #Whitelist
-	local Count: number = 0
-	
 	if DoNotWeld then
+		local CountTarget: number = #Whitelist
+		local Count: number = 0
+		
 		for Index, FilterDescendant in pairs(Whitelist) do
 			task.spawn(function()
 				for _, DoNotWeldPart in pairs(DoNotWeld) do
@@ -169,9 +169,9 @@ local function Weld(Object: BasePart, DoNotWeld) -- Weld the object to other obj
 				Count += 1
 			end)
 		end
+		
+		repeat task.wait() until Count == CountTarget
 	end
-	
-	repeat task.wait() until Count == CountTarget
 	
 	-- Check for existing welds & ignore those objects.
 	local ExistingWelds = {}
