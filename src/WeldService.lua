@@ -1,4 +1,4 @@
----!strict
+--!strict
 
 local Module = {}
 
@@ -101,9 +101,8 @@ function Module:BreakJoints(Object: BasePart | Model) -- Remove welds from speci
 					if SubObject:IsA("BasePart") then -- Check the SubObject is a BasePart.
 						BreakJoints(SubObject) -- Break the joints of the descendant.
 					end
+					
 				end)
-				
-				Count += 1
 			end
 			
 			repeat task.wait() until Count == CountTarget -- Wait for all threads to finish.
@@ -155,22 +154,9 @@ local function Weld(Object: BasePart, DoNotWeld) -- Weld the object to other obj
 	
 	-- Remove objects specified in the DoNotWeld list.
 	if DoNotWeld then
-		local CountTarget: number = #Whitelist
-		local Count: number = 0
-		
-		for Index, FilterDescendant in pairs(Whitelist) do
-			task.spawn(function()
-				for _, DoNotWeldPart in pairs(DoNotWeld) do
-					if DoNotWeldPart == FilterDescendant then
-						table.remove(Whitelist, Index)
-					end
-				end
-				
-				Count += 1
-			end)
+		for _, DoNotWeldPart in pairs(DoNotWeld) do
+			table.remove(Whitelist, table.find(Whitelist, DoNotWeldPart))
 		end
-		
-		repeat task.wait() until Count == CountTarget
 	end
 	
 	-- Check for existing welds & ignore those objects.
