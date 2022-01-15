@@ -20,14 +20,13 @@ local function AddToCache(Weld) -- Add to WeldCache.
 	end)
 end
 
-local function RemoveWeldCache(Weld)
+local function RemoveWeldCache(Weld) -- Remove from WeldCache.
 	local Success: boolean, Error: string? = pcall(function()
 		WeldCache[Weld.Part0][Weld.Part1] = nil -- Remove Part1 from Part0 map.
 		WeldCache[Weld.Part1][Weld.Part0] = nil -- Remove Part0 from Part1 map.
 	end)
-end
-
-local function RemoveEmptyCache(Weld)
+	
+	-- Cleanup any excessive space the objects are using in the WeldCache.
 	if WeldCache[Weld.Part0] then -- Check Part0 is in the WeldCache.
 		if not next(WeldCache[Weld.Part0]) then -- Is the WeldCache for Part0 not empty.
 			WeldCache[Weld.Part0] = nil -- Set Part0 WeldCache to nil.
@@ -75,8 +74,6 @@ game:GetService("CollectionService"):GetInstanceRemovedSignal("PartWelds"):Conne
 	WeldConnections[Weld] = nil -- Remove from WeldConnections dictionary.
 	
 	RemoveWeldCache(Weld) -- Remove from WeldCache.
-	
-	RemoveEmptyCache(Weld) -- Run RemoveEmptyCache function.
 end)
 
 local function BreakJoints(Object: BasePart) -- Remove welds from specified Object.
