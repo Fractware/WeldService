@@ -1,11 +1,12 @@
---!strict
+---!strict
 
-local Module = {
-	CanWeldAnchored = false,
-	-- Welding padding variables.
-	InnerPadding = 0.05, -- Ignore this far into the object. (Allow slight merging)
-	OuterPadding = 0.1, -- Ignore everything past this point outside the object. (Weld slightly around the object)
-}
+local Module = {}
+
+Module.CanWeldAnchored = false -- Can anchored objects weld to other anchored objects.
+
+-- Welding padding variables.
+Module.InnerPadding = 0.05 -- Ignore this far into the object. (Allow slight merging)
+Module.OuterPadding = 0.1 -- Ignore everything past this point outside the object. (Weld slightly around the object)
 
 local WeldCache = {}
 local WeldConnections = {}
