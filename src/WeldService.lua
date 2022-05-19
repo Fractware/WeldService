@@ -8,10 +8,10 @@ Module.CanWeldAnchored = false -- Can anchored objects weld to other anchored ob
 Module.InnerPadding = 0.05 -- Ignore this far into the object. (Allow slight merging)
 Module.OuterPadding = 0.1 -- Ignore everything past this point outside the object. (Weld slightly around the object)
 
-local WeldCache = {}
-local WeldConnections = {}
+local WeldCache: {[BasePart]: {[BasePart]: WeldConstraint}} = {}
+local WeldConnections: {[WeldConstraint]: any} = {}
 
-local function AddToCache(Weld) -- Add to WeldCache.
+local function AddToCache(Weld: WeldConstraint) -- Add to WeldCache.
 	local Success: boolean, Error: string? = pcall(function()
 		WeldCache[Weld.Part0] = WeldCache[Weld.Part0] or {} -- Get or create map for Part0 welds.
 		WeldCache[Weld.Part0][Weld.Part1] = Weld -- Add the weld to the Part0 map.
@@ -21,7 +21,7 @@ local function AddToCache(Weld) -- Add to WeldCache.
 	end)
 end
 
-local function RemoveWeldCache(Weld) -- Remove from WeldCache.
+local function RemoveWeldCache(Weld: WeldConstraint) -- Remove from WeldCache.
 	local Success: boolean, Error: string? = pcall(function()
 		WeldCache[Weld.Part0][Weld.Part1] = nil -- Remove Part1 from Part0 map.
 		WeldCache[Weld.Part1][Weld.Part0] = nil -- Remove Part0 from Part1 map.
@@ -42,7 +42,7 @@ local function RemoveWeldCache(Weld) -- Remove from WeldCache.
 end
 
 local function AddWeld(Weld: WeldConstraint)
-	local Connections = {} -- Store the welds Connetions.
+	local Connections: {[any]: RBXScriptConnection} = {} -- Store the welds Connetions.
 	
 	Connections.Part0 = Weld:GetPropertyChangedSignal("Part0"):Connect(function() -- Check for Part0 changes.
 		if Weld.Part0 == nil then -- Check if Part0 is nil.
@@ -90,7 +90,7 @@ function Module:BreakJoints(Object: BasePart | Model) -- Remove welds from speci
 		if Object:IsA("BasePart") then -- Check if Object is a BasePart.
 			BreakJoints(Object) -- Break the joints of the Object.
 		elseif Object:IsA("Model") then -- Check if Object is a Model.
-			local Descendants = Object:GetDescendants()
+			local Descendants: {Instance} = Object:GetDescendants()
 			
 			local CountTarget: number = #Descendants
 			local Count: number = 0
@@ -113,7 +113,7 @@ function Module:BreakJoints(Object: BasePart | Model) -- Remove welds from speci
 end
 
 function Module:GetJoinedParts(Object: BasePart) -- Get Objects welded to the specified Object.
-	local WeldedObjects = {} -- Store welded objects.
+	local WeldedObjects: {[BasePart]: boolean} = {} -- Store welded objects.
 	
 	if Object:IsA("BasePart") then -- Check if Object is a BasePart.
 		if WeldCache[Object] then -- Check Object is in the WeldCache.
@@ -122,7 +122,7 @@ function Module:GetJoinedParts(Object: BasePart) -- Get Objects welded to the sp
 			end
 		end
 	elseif Object:IsA("Model") then -- Check if Object is a Model.
-		local Descendants = Object:GetDescendants()
+		local Descendants: {Instance} = Object:GetDescendants()
 		
 		local CountTarget: number = #Descendants
 		local Count: number = 0
@@ -149,8 +149,8 @@ end
 local OverlapParameters: OverlapParams = OverlapParams.new()
 OverlapParameters.FilterType = Enum.RaycastFilterType.Whitelist
 
-local function Weld(Object: BasePart, DoNotWeld) -- Weld the object to other objects around it. Can specify a table of objects not to weld to with DoNotWeld.
-	local Whitelist = game:GetService("CollectionService"):GetTagged("Weldable") -- Only check Weldable objects.
+local function Weld(Object: BasePart, DoNotWeld: {BasePart}) -- Weld the object to other objects around it. Can specify a table of objects not to weld to with DoNotWeld.
+	local Whitelist: {BasePart} = game:GetService("CollectionService"):GetTagged("Weldable") -- Only check Weldable objects.
 	
 	-- Remove objects specified in the DoNotWeld list.
 	if DoNotWeld then
@@ -160,7 +160,7 @@ local function Weld(Object: BasePart, DoNotWeld) -- Weld the object to other obj
 	end
 	
 	-- Check for existing welds & ignore those objects.
-	local ExistingWelds = {}
+	local ExistingWelds: {WeldConstraint} = {}
 	if WeldCache[Object] then
 		for OtherObject, Weld in pairs(WeldCache[Object]) do
 			table.insert(ExistingWelds, Weld)
@@ -190,7 +190,7 @@ local function Weld(Object: BasePart, DoNotWeld) -- Weld the object to other obj
 	-- Welding.
 	local InnerPadding: number = Module.InnerPadding -- Cache InnerPadding as a variable.
 	local OuterPadding: number = Module.OuterPadding -- Cache OuterPadding as a variable.
-	local Sizes = {
+	local Sizes: {Vector3} = {
 		Object.Size + Vector3.new(OuterPadding, -InnerPadding, -InnerPadding),
 		Object.Size + Vector3.new(-InnerPadding, OuterPadding, -InnerPadding),
 		Object.Size + Vector3.new(-InnerPadding, -InnerPadding, OuterPadding),
@@ -200,7 +200,7 @@ local function Weld(Object: BasePart, DoNotWeld) -- Weld the object to other obj
 	
 	for _, Size in pairs(Sizes) do -- Loop through each axis.
 		task.spawn(function()
-			local TouchingObjects = game:GetService("Workspace"):GetPartBoundsInBox(Object.CFrame, Size, OverlapParameters)
+			local TouchingObjects: {BasePart} = game:GetService("Workspace"):GetPartBoundsInBox(Object.CFrame, Size, OverlapParameters)
 			
 			local TouchingCount: number = 0
 			
@@ -234,7 +234,7 @@ function Module:MakeJoints(Object: BasePart | Model, DoNotWeld) -- Weld the obje
 	if Object:IsA("BasePart") then -- Check if Object is a BasePart.
 		Weld(Object, DoNotWeld) -- Weld the Object.
 	elseif Object:IsA("Model") then -- Check if Object is a Model.
-		local Descendants = Object:GetDescendants()
+		local Descendants: {Instance} = Object:GetDescendants()
 		
 		local Count: number = 0
 		
