@@ -61,7 +61,7 @@ local function AddWeld(Weld: WeldConstraint)
 	AddToCache(Weld) -- Add weld to the cache.
 end
 
-for _, Weld in pairs(game:GetService("CollectionService"):GetTagged("PartWelds")) do
+for _, Weld in game:GetService("CollectionService"):GetTagged("PartWelds") do
 	AddWeld(Weld) -- Setup the weld.
 end
 
@@ -79,7 +79,7 @@ end)
 
 local function BreakJoints(Object: BasePart) -- Remove welds from specified Object.
 	if WeldCache[Object] then -- Check Object is in WeldCache.
-		for OtherObject, Weld in pairs(WeldCache[Object]) do -- Loop through welds in the Object.
+		for OtherObject, Weld in WeldCache[Object] do -- Loop through welds in the Object.
 			Weld:Destroy() -- Remove the weld.
 		end
 	end
@@ -96,7 +96,7 @@ function Module:BreakJoints(Object: BasePart | Model) -- Remove welds from speci
 			local Count: number = 0
 			
 			-- Remove welds from descendants in the model.
-			for _, SubObject in pairs(Descendants) do -- Loop through descendants in the model.
+			for _, SubObject in Descendants do -- Loop through descendants in the model.
 				task.spawn(function()
 					if SubObject:IsA("BasePart") then -- Check the SubObject is a BasePart.
 						BreakJoints(SubObject) -- Break the joints of the descendant.
@@ -117,7 +117,7 @@ function Module:GetJoinedParts(Object: BasePart) -- Get Objects welded to the sp
 	
 	if Object:IsA("BasePart") then -- Check if Object is a BasePart.
 		if WeldCache[Object] then -- Check Object is in the WeldCache.
-			for OtherObject, Weld in pairs(WeldCache[Object]) do -- Loop through welds for the Object.
+			for OtherObject, Weld in WeldCache[Object] do -- Loop through welds for the Object.
 				WeldedObjects[OtherObject] = true -- Add to the WeldedParts.
 			end
 		end
@@ -127,10 +127,10 @@ function Module:GetJoinedParts(Object: BasePart) -- Get Objects welded to the sp
 		local CountTarget: number = #Descendants
 		local Count: number = 0
 		
-		for _, SubObject in pairs(Descendants) do -- Loop through descendants in the model.
+		for _, SubObject in Descendants do -- Loop through descendants in the model.
 			task.spawn(function()
 				if SubObject:IsA("BasePart") then -- Check the SubObject is a BasePart.
-					for _, SubWeldedObject in pairs(Module:GetJoinedParts(SubObject)) do -- Loop through the objects welded to SubObject.
+					for _, SubWeldedObject in Module:GetJoinedParts(SubObject) do -- Loop through the objects welded to SubObject.
 						WeldedObjects[SubWeldedObject] = true -- Add to the WeldedParts.
 					end
 				end
@@ -154,7 +154,7 @@ local function Weld(Object: BasePart, DoNotWeld: {BasePart}) -- Weld the object 
 	
 	-- Remove objects specified in the DoNotWeld list.
 	if DoNotWeld then
-		for _, DoNotWeldPart in pairs(DoNotWeld) do
+		for _, DoNotWeldPart in DoNotWeld do
 			table.remove(Whitelist, table.find(Whitelist, DoNotWeldPart))
 		end
 	end
@@ -162,7 +162,7 @@ local function Weld(Object: BasePart, DoNotWeld: {BasePart}) -- Weld the object 
 	-- Check for existing welds & ignore those objects.
 	local ExistingWelds: {WeldConstraint} = {}
 	if WeldCache[Object] then
-		for OtherObject, Weld in pairs(WeldCache[Object]) do
+		for OtherObject, Weld in WeldCache[Object] do
 			table.insert(ExistingWelds, Weld)
 		end
 	end
@@ -171,9 +171,9 @@ local function Weld(Object: BasePart, DoNotWeld: {BasePart}) -- Weld the object 
 	local CountTarget: number = #ExistingWelds
 	local Count: number = 0
 	
-	for _, ExistingWeld in pairs(ExistingWelds) do
+	for _, ExistingWeld in ExistingWelds do
 		task.spawn(function()
-			for Index, Weldable in pairs(Whitelist) do
+			for Index, Weldable in Whitelist do
 				if ExistingWeld.Part0 == Weldable or ExistingWeld.Part1 == Weldable then
 					table.remove(Whitelist, Index)
 				end
@@ -198,13 +198,13 @@ local function Weld(Object: BasePart, DoNotWeld: {BasePart}) -- Weld the object 
 	
 	local SizeCount: number = 0
 	
-	for _, Size in pairs(Sizes) do -- Loop through each axis.
+	for _, Size in Sizes do -- Loop through each axis.
 		task.spawn(function()
 			local TouchingObjects: {BasePart} = game:GetService("Workspace"):GetPartBoundsInBox(Object.CFrame, Size, OverlapParameters)
 			
 			local TouchingCount: number = 0
 			
-			for _, Touching in pairs(TouchingObjects) do -- Loop through each object within welding distance.
+			for _, Touching in TouchingObjects do -- Loop through each object within welding distance.
 				task.spawn(function()
 					if Object ~= Touching and (CanWeldAnchored or not (Object.Anchored  and Touching.Anchored)) then
 						-- Create the weld.
@@ -238,7 +238,7 @@ function Module:MakeJoints(Object: BasePart | Model, DoNotWeld) -- Weld the obje
 		
 		local Count: number = 0
 		
-		for _, SubObject in pairs(Descendants) do -- Loop through descendants in the model.
+		for _, SubObject in Descendants do -- Loop through descendants in the model.
 			task.spawn(function()
 				if SubObject:IsA("BasePart") and SubObject ~= Object.PrimaryPart then -- Check the SubObject is a BasePart & is not the PrimaryPart.
 					Weld(SubObject, DoNotWeld) -- Weld the Object.
