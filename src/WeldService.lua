@@ -198,6 +198,8 @@ local function Weld(Object: BasePart, DoNotWeld: {BasePart}) -- Weld the object 
 	
 	local SizeCount: number = 0
 	
+	local FoundObjects: {BasePart} = {}
+	
 	for _, Size in Sizes do -- Loop through each axis.
 		task.spawn(function()
 			local TouchingObjects: {BasePart} = game:GetService("Workspace"):GetPartBoundsInBox(Object.CFrame, Size, OverlapParameters)
@@ -206,7 +208,9 @@ local function Weld(Object: BasePart, DoNotWeld: {BasePart}) -- Weld the object 
 			
 			for _, Touching in TouchingObjects do -- Loop through each object within welding distance.
 				task.spawn(function()
-					if Object ~= Touching and (CanWeldAnchored or not (Object.Anchored and Touching.Anchored)) then
+					if Object ~= Touching and (CanWeldAnchored or not (Object.Anchored and Touching.Anchored)) and not table.find(FoundObjects, Touching) then
+						table.insert(FoundObjects, Touching) -- Do not allow checks to create multiple welds to this object.
+								
 						-- Create the weld.
 						local NewWeld: WeldConstraint = Instance.new("WeldConstraint")
 						NewWeld.Part0 = Object
