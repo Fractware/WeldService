@@ -206,7 +206,7 @@ local function Weld(Object: BasePart, DoNotWeld: {BasePart}) -- Weld the object 
 			
 			for _, Touching in TouchingObjects do -- Loop through each object within welding distance.
 				task.spawn(function()
-					if Object ~= Touching and (CanWeldAnchored or not (Object.Anchored  and Touching.Anchored)) then
+					if Object ~= Touching and (CanWeldAnchored or not (Object.Anchored and Touching.Anchored)) then
 						-- Create the weld.
 						local NewWeld: WeldConstraint = Instance.new("WeldConstraint")
 						NewWeld.Part0 = Object
