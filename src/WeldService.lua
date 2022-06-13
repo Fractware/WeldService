@@ -237,7 +237,7 @@ local function Weld(Object: BasePart, Whitelist: {BasePart}) -- Weld the object 
 	repeat task.wait() until SizeCount == SizeCountTarget -- Wait for all threads to finish.
 end
 
-function Module:MakeJoints(Object: BasePart | Model, Blacklist) -- Weld the object to other objects around it. Can specify a table of parts not to weld to with Blacklist.
+function Module:MakeJoints(Object: BasePart | Model, Blacklist: {BasePart}) -- Weld the object to other objects around it. Can specify a table of parts not to weld to with Blacklist.
 	local Whitelist: {BasePart} = game:GetService("CollectionService"):GetTagged("Weldable") -- Only check Weldable objects.
 	
 	-- Do not weld to objects in its own model.
