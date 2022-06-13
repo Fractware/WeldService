@@ -161,33 +161,7 @@ end
 local OverlapParameters: OverlapParams = OverlapParams.new()
 OverlapParameters.FilterType = Enum.RaycastFilterType.Whitelist
 
-local function Weld(Object: BasePart, Blacklist: {BasePart}) -- Weld the object to other objects around it. Can specify a table of objects not to weld to with Blacklist.
-	local Whitelist: {BasePart} = game:GetService("CollectionService"):GetTagged("Weldable") -- Only check Weldable objects.
-	
-	-- Do not weld to objects in its own model.
-	if Object.Parent then
-		if Object.Parent:IsA("Model") and Object.Parent ~= game:GetService("Workspace") then
-			Blacklist = Blacklist or {}
-			for _, Descendant in Object.Parent:GetDescendants() do
-				if Descendant:IsA("BasePart") then
-					table.insert(Blacklist, Descendant)
-				end
-			end
-		end
-	end
-	
-	-- Remove objects specified in the Blacklist.
-	if Blacklist then
-		for _, Whitelisted in Whitelist do
-			for _, Blacklisted in Blacklist do
-				local Result: number? = table.find(Whitelist, Blacklisted)
-				if Result then
-					table.remove(Whitelist, Result)
-				end
-			end
-		end
-	end
-	
+local function Weld(Object: BasePart, Whitelist: {BasePart}) -- Weld the object to other objects around it. Can specify a table of objects not to weld to with Blacklist.
 	-- Check for existing welds & ignore those objects.
 	local ExistingWelds: {WeldConstraint} = {}
 	if WeldCache[Object] then
@@ -264,9 +238,31 @@ local function Weld(Object: BasePart, Blacklist: {BasePart}) -- Weld the object 
 end
 
 function Module:MakeJoints(Object: BasePart | Model, Blacklist) -- Weld the object to other objects around it. Can specify a table of parts not to weld to with Blacklist.
+	local Whitelist: {BasePart} = game:GetService("CollectionService"):GetTagged("Weldable") -- Only check Weldable objects.
+	
+	-- Remove objects specified in the Blacklist.
+	if Blacklist then
+		for _, Whitelisted in Whitelist do
+			for _, Blacklisted in Blacklist do
+				local Result: number? = table.find(Whitelist, Blacklisted)
+				if Result then
+					table.remove(Whitelist, Result)
+				end
+			end
+		end
+	end
+	
 	if Object:IsA("BasePart") then -- Check if Object is a BasePart.
-		Weld(Object, Blacklist) -- Weld the Object.
+		Weld(Object, Whitelist) -- Weld the Object.
 	elseif Object:IsA("Model") then -- Check if Object is a Model.
+		-- Do not weld to objects in its own model.
+		Blacklist = Blacklist or {}
+		for _, Descendant in Object.Parent:GetDescendants() do
+			if Descendant:IsA("BasePart") then
+				table.insert(Blacklist, Descendant)
+			end
+		end
+		
 		local Descendants: {Instance} = Object:GetDescendants()
 		
 		local Count: number = 0
@@ -274,7 +270,7 @@ function Module:MakeJoints(Object: BasePart | Model, Blacklist) -- Weld the obje
 		for _, SubObject in Descendants do -- Loop through descendants in the model.
 			task.spawn(function()
 				if SubObject:IsA("BasePart") and SubObject ~= Object.PrimaryPart then -- Check the SubObject is a BasePart & is not the PrimaryPart.
-					Weld(SubObject, Blacklist) -- Weld the Object.
+					Weld(SubObject, Whitelist) -- Weld the Object.
 				end
 				
 				Count += 1
