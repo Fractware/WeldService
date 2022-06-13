@@ -240,6 +240,16 @@ end
 function Module:MakeJoints(Object: BasePart | Model, Blacklist) -- Weld the object to other objects around it. Can specify a table of parts not to weld to with Blacklist.
 	local Whitelist: {BasePart} = game:GetService("CollectionService"):GetTagged("Weldable") -- Only check Weldable objects.
 	
+	-- Do not weld to objects in its own model.
+	if Object:IsA("Model") then
+		Blacklist = Blacklist or {}
+		for _, Descendant in Object:GetDescendants() do
+			if Descendant:IsA("BasePart") then
+				table.insert(Blacklist, Descendant)
+			end
+		end
+	end
+	
 	-- Remove objects specified in the Blacklist.
 	if Blacklist then
 		for _, Whitelisted in Whitelist do
@@ -255,14 +265,6 @@ function Module:MakeJoints(Object: BasePart | Model, Blacklist) -- Weld the obje
 	if Object:IsA("BasePart") then -- Check if Object is a BasePart.
 		Weld(Object, Whitelist) -- Weld the Object.
 	elseif Object:IsA("Model") then -- Check if Object is a Model.
-		-- Do not weld to objects in its own model.
-		Blacklist = Blacklist or {}
-		for _, Descendant in Object.Parent:GetDescendants() do
-			if Descendant:IsA("BasePart") then
-				table.insert(Blacklist, Descendant)
-			end
-		end
-		
 		local Descendants: {Instance} = Object:GetDescendants()
 		
 		local Count: number = 0
