@@ -8,8 +8,6 @@ Module.CanWeldAnchored = false -- Can anchored objects weld to other anchored ob
 Module.InnerPadding = 0.05 -- Ignore this far into the object. (Allow slight merging)
 Module.OuterPadding = 0.1 -- Ignore everything past this point outside the object. (Weld slightly around the object)
 
-local Utilities = require(script.Parent.Utilities)
-
 local LinkCache: {[BasePart]: {[BasePart]: WeldConstraint}} = {}
 local ConnectionCache: {[WeldConstraint]: {[any]: RBXScriptConnection}} = {}
 
