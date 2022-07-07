@@ -83,14 +83,6 @@ end)
 local function Unweld(Object: BasePart) -- Remove welds from specified Object.
 	if WeldCache[Object] then -- Check Object is in WeldCache.
 		for OtherObject, Weld in WeldCache[Object] do -- Loop through welds in the Object.
-			local Sound: Sound = script.Break:Clone()
-			Sound.Parent = Object
-			Sound:Play()
-			task.spawn(function()
-				Sound.Ended:Wait()
-				Sound:Destroy()
-			end)
-			
 			Weld:Destroy() -- Remove the weld.
 		end
 	end
