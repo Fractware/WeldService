@@ -8,142 +8,156 @@ Module.CanWeldAnchored = false -- Can anchored objects weld to other anchored ob
 Module.InnerPadding = 0.05 -- Ignore this far into the object. (Allow slight merging)
 Module.OuterPadding = 0.1 -- Ignore everything past this point outside the object. (Weld slightly around the object)
 
-local WeldCache: {[BasePart]: {[BasePart]: WeldConstraint}} = {}
-local WeldConnections: {[WeldConstraint]: {any}} = {}
+local Utilities = require(script.Parent.Utilities)
 
-local function AddToConnectionCache(Weld: WeldConstraint)
-	local Connections: {[any]: RBXScriptConnection} = {} -- Store the welds Connetions.
-	
-	Connections.Part0 = Weld:GetPropertyChangedSignal("Part0"):Connect(function() -- Check for Part0 changes.
-		if Weld.Part0 == nil then -- Check if Part0 is nil.
-			Weld:Destroy() -- Remove weld.
-		end
-	end)
-	
-	Connections.Part1 = Weld:GetPropertyChangedSignal("Part1"):Connect(function() -- Check for Part1 changes.
-		if Weld.Part1 == nil then -- Check if Part1 is nil.
-			Weld:Destroy() -- Remove weld.
-		end
-	end)
-	
-	WeldConnections[Weld] = Connections -- Append to the WeldConnections dictionary.
+local LinkCache: {[BasePart]: {[BasePart]: WeldConstraint}} = {}
+local ConnectionCache: {[WeldConstraint]: {[any]: RBXScriptConnection}} = {}
+
+local WeldableCache: {[BasePart]: boolean} = {}
+
+for _, Weldable in game:GetService("CollectionService"):GetTagged("Weldable") do
+	WeldableCache[Weldable] = true
 end
 
-local function AddToWeldCache(Weld: WeldConstraint) -- Add to WeldCache.
-	local Success: boolean, Error: string? = pcall(function()
-		WeldCache[Weld.Part0] = WeldCache[Weld.Part0] or {} -- Get or create map for Part0 welds.
-		WeldCache[Weld.Part0][Weld.Part1] = Weld -- Add the weld to the Part0 map.
+game:GetService("CollectionService"):GetInstanceAddedSignal("Weldable"):Connect(function(Weldable)
+	WeldableCache[Weldable] = true
+end)
+
+game:GetService("CollectionService"):GetInstanceRemovedSignal("Weldable"):Connect(function(Weldable)
+	WeldableCache[Weldable] = nil
+end)
+
+local function AddConnectionCache(Weld: WeldConstraint)
+	ConnectionCache[Weld] = { -- Append to the WeldConnections dictionary.
+		Part0 = Weld:GetPropertyChangedSignal("Part0"):Connect(function() -- Check for Part0 changes.
+			if Weld.Part0 == nil then -- Check if Part0 is nil.
+				Weld:Destroy() -- Remove weld.
+			end
+		end),
+		Part1 = Weld:GetPropertyChangedSignal("Part1"):Connect(function() -- Check for Part1 changes.
+			if Weld.Part1 == nil then -- Check if Part1 is nil.
+				Weld:Destroy() -- Remove weld.
+			end
+		end),
+	}
+end
+
+local function RemoveConnectionCache(Weld: WeldConstraint)
+	ConnectionCache[Weld].Part0:Disconnect() -- Disconnect Part0 changed connection.
+	ConnectionCache[Weld].Part1:Disconnect() -- Disconnect Part1 changed connection.
+	ConnectionCache[Weld] = nil -- Remove from WeldConnections dictionary.
+end
+
+local function AddLinkCache(Weld: WeldConstraint) -- Add to WeldCache.
+	local Part0: BasePart? = Weld.Part0
+	local Part1: BasePart? = Weld.Part1
+	
+	if Part0 and Part1 then
+		LinkCache[Part0] = LinkCache[Part0] or {} -- Get or create map for Part0 welds.
+		LinkCache[Part0][Part1] = Weld -- Add the weld to the Part0 map.
 		
-		WeldCache[Weld.Part1] = WeldCache[Weld.Part1] or {} -- Get or create map for Part1 welds.
-		WeldCache[Weld.Part1][Weld.Part0] = Weld -- Add the weld to the Part1 map.
-	end)
+		LinkCache[Part1] = LinkCache[Part1] or {} -- Get or create map for Part1 welds.
+		LinkCache[Part1][Part0] = Weld -- Add the weld to the Part1 map.
+	end
 end
 
-local function RemoveWeldCache(Weld: WeldConstraint)
-	local Success: boolean, Error: string? = pcall(function()
-		WeldCache[Weld.Part0][Weld.Part1] = nil -- Remove Part1 from Part0 map.
-		WeldCache[Weld.Part1][Weld.Part0] = nil -- Remove Part0 from Part1 map.
+local function RemoveLinkCache(Weld: WeldConstraint)
+	local Part0: BasePart? = Weld.Part0
+	local Part1: BasePart? = Weld.Part1
+	
+	if Part0 and Part1 then
+		LinkCache[Part0][Part1] = nil -- Remove Part1 from Part0 map.
+		LinkCache[Part1][Part0] = nil -- Remove Part0 from Part1 map.
 		
 		-- Cleanup any excessive space the objects are using in the WeldCache.
-		if WeldCache[Weld.Part0] then -- Check Part0 is in the WeldCache.
-			if not next(WeldCache[Weld.Part0]) then -- Is the WeldCache for Part0 not empty.
-				WeldCache[Weld.Part0] = nil -- Set Part0 WeldCache to nil.
+		if LinkCache[Part0] then -- Check Part0 is in the WeldCache.
+			if not next(LinkCache[Part0]) then -- Is the WeldCache for Part0 not empty.
+				LinkCache[Part0] = nil -- Set Part0 WeldCache to nil.
 			end
 		end
 		
-		if WeldCache[Weld.Part1] then -- Check Part1 is in the WeldCache.
-			if not next(WeldCache[Weld.Part1]) then -- Is the WeldCache for Part1 not empty.
-				WeldCache[Weld.Part1] = nil -- Set Part1 WeldCache to nil.
+		if LinkCache[Part1] then -- Check Part1 is in the WeldCache.
+			if not next(LinkCache[Part1]) then -- Is the WeldCache for Part1 not empty.
+				LinkCache[Part1] = nil -- Set Part1 WeldCache to nil.
 			end
 		end
-	end)
+	end
 end
 
-local function AddWeld(Weld: WeldConstraint)	
-	AddToConnectionCache(Weld) -- Add weld to WeldConnections.
-	AddToWeldCache(Weld) -- Add weld to WeldCache.
+local function AddWeld(Weld: WeldConstraint) -- Setup the weld.	
+	AddConnectionCache(Weld) -- Add weld to WeldConnections.
+	AddLinkCache(Weld) -- Add weld to WeldCache.
+end
+
+local function RemoveWeld(Weld: WeldConstraint) -- Remove the weld.
+	RemoveConnectionCache(Weld) -- Remove from ConnectionCache.
+	RemoveLinkCache(Weld) -- Remove from WeldCache.
 end
 
 for _, Weld in game:GetService("CollectionService"):GetTagged("PartWelds") do
-	AddWeld(Weld) -- Setup the weld.
+	AddWeld(Weld)
 end
 
 game:GetService("CollectionService"):GetInstanceAddedSignal("PartWelds"):Connect(function(Weld: WeldConstraint)  -- Detect when weld is added.
-	AddWeld(Weld) -- Setup the weld.
+	AddWeld(Weld)
 end)
 
 game:GetService("CollectionService"):GetInstanceRemovedSignal("PartWelds"):Connect(function(Weld: WeldConstraint) -- Detect when weld is removed.
-	WeldConnections[Weld].Part0:Disconnect() -- Disconnect Part0 changed connection.
-	WeldConnections[Weld].Part1:Disconnect() -- Disconnect Part1 changed connection.
-	WeldConnections[Weld] = nil -- Remove from WeldConnections dictionary.
-	
-	RemoveWeldCache(Weld) -- Remove from WeldCache.
+	RemoveWeld(Weld)
 end)
 
 local function Unweld(Object: BasePart) -- Remove welds from specified Object.
-	if WeldCache[Object] then -- Check Object is in WeldCache.
-		for OtherObject, Weld in WeldCache[Object] do -- Loop through welds in the Object.
+	if LinkCache[Object] then -- Check Object is in WeldCache.
+		for OtherObject, Weld in LinkCache[Object] do -- Loop through welds in the Object.
+			--[[
+			local Sound: Sound = script.Break:Clone()
+			Sound.Parent = Object
+			Sound:Play()
+			task.spawn(function()
+				Sound.Ended:Wait()
+				Sound:Destroy()
+			end)
+			--]]
+			
 			Weld:Destroy() -- Remove the weld.
 		end
 	end
 end
 
-function Module:BreakJoints(Object: BasePart | Model) -- Remove welds from specified Object. (Usable API)
+function Module:Unweld(Object: BasePart | Model): boolean -- Remove welds from specified Object. (Usable API)
 	if Object then -- Check object was passed.
 		if Object:IsA("BasePart") then -- Check if Object is a BasePart.
 			Unweld(Object) -- Break the joints of the Object.
 		elseif Object:IsA("Model") then -- Check if Object is a Model.
-			local Descendants: {Instance} = Object:GetDescendants()
-			
-			local CountTarget: number = #Descendants
-			local Count: number = 0
-			
 			-- Remove welds from descendants in the model.
-			for _, SubObject in Descendants do -- Loop through descendants in the model.
-				task.spawn(function()
-					if SubObject:IsA("BasePart") then -- Check the SubObject is a BasePart.
-						Unweld(SubObject) -- Break the joints of the descendant.
-					end
-					
-					Count += 1
-				end)
+			for _, SubObject in Object:GetDescendants() do -- Loop through descendants in the model.
+				if SubObject:IsA("BasePart") then -- Check the SubObject is a BasePart.
+					Unweld(SubObject) -- Break the joints of the descendant.
+				end
 			end
-			
-			repeat task.wait() until Count == CountTarget -- Wait for all threads to finish.
 		end
 	end
 	
 	return true
 end
 
-function Module:GetConnectedParts(Object: BasePart) -- Get Objects welded to the specified Object.
+function Module:GetWelded(Object: BasePart): {[BasePart]: boolean} -- Get Objects welded to the specified Object.
 	local WeldedObjects: {[BasePart]: boolean} = {} -- Store welded objects.
 	
 	if Object:IsA("BasePart") then -- Check if Object is a BasePart.
-		if WeldCache[Object] then -- Check Object is in the WeldCache.
-			for OtherObject, Weld in WeldCache[Object] do -- Loop through welds for the Object.
-				table.insert(WeldedObjects, OtherObject) -- Add to the WeldedParts.
+		if LinkCache[Object] then -- Check Object is in the WeldCache.
+			for OtherObject, Weld in LinkCache[Object] do -- Loop through welds for the Object.
+				WeldedObjects[OtherObject] = true -- Add to the WeldedParts.
 			end
 		end
 	elseif Object:IsA("Model") then -- Check if Object is a Model.
-		local Descendants: {Instance} = Object:GetDescendants()
-		
-		local CountTarget: number = #Descendants
-		local Count: number = 0
-		
-		for _, SubObject in Descendants do -- Loop through descendants in the model.
-			task.spawn(function()
-				if SubObject:IsA("BasePart") then -- Check the SubObject is a BasePart.
-					for _, SubWeldedObject in Module:GetWelded(SubObject) do -- Loop through the objects welded to SubObject.
-						table.insert(WeldedObjects, SubWeldedObject) -- Add to the WeldedParts.
-					end
+		for _, SubObject in Object:GetDescendants() do -- Loop through descendants in the model.
+			if SubObject:IsA("BasePart") then -- Check the SubObject is a BasePart.
+				for _, SubWeldedObject in Module:GetWelded(SubObject) do -- Loop through the objects welded to SubObject.
+					WeldedObjects[SubWeldedObject] = true -- Add to the WeldedParts.
 				end
-				
-				Count += 1
-			end)
+			end
 		end
-		
-		repeat task.wait() until Count == CountTarget -- Wait for all threads to finish.
 	end
 	
 	return WeldedObjects -- Return the welded objects.
@@ -153,30 +167,22 @@ end
 local OverlapParameters: OverlapParams = OverlapParams.new()
 OverlapParameters.FilterType = Enum.RaycastFilterType.Whitelist
 
-local function Weld(Object: BasePart, Whitelist: {BasePart}) -- Weld the object to other objects around it. Can specify a table of objects not to weld to with Blacklist.
+local function Weld(Object: BasePart, Whitelist: {[BasePart]: boolean}, WhitelistTable: {BasePart}) -- Weld the object to other objects around it. Can specify a table of objects not to weld to with Blacklist.	
 	-- Check for existing welds & ignore those objects.
 	local ExistingWelds: {WeldConstraint} = {}
-	if WeldCache[Object] then
-		for OtherObject, Weld in WeldCache[Object] do
+	if LinkCache[Object] then
+		for OtherObject, Weld in LinkCache[Object] do
 			table.insert(ExistingWelds, Weld)
 		end
 	end
 	
 	-- Remove ExistingWelds from the Whitelist.
 	for _, ExistingWeld in ExistingWelds do
-		local Part0Result: number? = table.find(Whitelist, ExistingWeld.Part0)
-		local Part1Result: number? = table.find(Whitelist, ExistingWeld.Part1)
-		
-		if Part0Result then
-			table.remove(Whitelist, Part0Result)
-		end
-		
-		if Part1Result then
-			table.remove(Whitelist, Part1Result)
-		end
+		Whitelist[ExistingWeld.Part0] = nil
+		Whitelist[ExistingWeld.Part1] = nil
 	end
 	
-	OverlapParameters.FilterDescendantsInstances = Whitelist -- Set the OverlapParameters to only check the Whitelist.
+	OverlapParameters.FilterDescendantsInstances = WhitelistTable -- Set the OverlapParameters to only check the Whitelist.
 	
 	-- Welding.
 	local InnerPadding: number = Module.InnerPadding -- Cache InnerPadding as a variable.
@@ -187,50 +193,39 @@ local function Weld(Object: BasePart, Whitelist: {BasePart}) -- Weld the object 
 		Object.Size + Vector3.new(-InnerPadding, -InnerPadding, OuterPadding),
 	}
 	
-	local SizeCount: number = 0
-	
 	local FoundObjects: {BasePart} = {}
 	
 	for _, Size in Sizes do -- Loop through each axis.
-		task.spawn(function()
-			local TouchingObjects: {BasePart} = game:GetService("Workspace"):GetPartBoundsInBox(Object.CFrame, Size, OverlapParameters)
+		local TouchingObjects: {BasePart} = game:GetService("Workspace"):GetPartBoundsInBox(Object.CFrame, Size, OverlapParameters)
+		
+		for _, Touching in TouchingObjects do -- Loop through each object within welding distance.
+			local AnchoredWeldCheckPass: boolean = true
 			
-			local TouchingCount: number = 0
-			
-			for _, Touching in TouchingObjects do -- Loop through each object within welding distance.
-				task.spawn(function()
-					if Object ~= Touching and (Module.CanWeldAnchored or not (Object.Anchored and Touching.Anchored)) and not table.find(FoundObjects, Touching) then
-						table.insert(FoundObjects, Touching) -- Do not allow checks to create multiple welds to this object.
-						
-						-- Create the weld.
-						local NewWeld: WeldConstraint = Instance.new("WeldConstraint")
-						NewWeld.Part0 = Object
-						NewWeld.Part1 = Touching
-						game:GetService("CollectionService"):AddTag(NewWeld, "PartWelds")
-						NewWeld.Parent = Object
-						
-						NewWeld.Part1.Destroying:Connect(function()
-							NewWeld:Destroy()
-						end)
-					end
-					
-					TouchingCount += 1
-				end)
+			if not Module.CanWeldAnchored then
+				local IsAnchoredWeld: boolean = Object.Anchored and Touching.Anchored
+				AnchoredWeldCheckPass = if Module.CanWeldAnchored then true elseif not Module.CanWeldAnchored and not IsAnchoredWeld then true else false
 			end
 			
-			local TouchingCountTarget: number = #TouchingObjects
-			repeat task.wait() until TouchingCount == TouchingCountTarget -- Wait for all threads to finish.
-			
-			SizeCount += 1
-		end)
+			if Object ~= Touching and AnchoredWeldCheckPass and not table.find(FoundObjects, Touching) then
+				table.insert(FoundObjects, Touching) -- Do not allow checks to create multiple welds to this object.
+				
+				-- Create the weld.
+				local NewWeld: WeldConstraint = Instance.new("WeldConstraint")
+				NewWeld.Part0 = Object
+				NewWeld.Part1 = Touching
+				game:GetService("CollectionService"):AddTag(NewWeld, "PartWelds")
+				NewWeld.Parent = Object
+				
+				NewWeld.Part1.Destroying:Connect(function()
+					NewWeld:Destroy()
+				end)
+			end
+		end
 	end
-	
-	local SizeCountTarget: number = #Sizes
-	repeat task.wait() until SizeCount == SizeCountTarget -- Wait for all threads to finish.
 end
 
-function Module:MakeJoints(Object: BasePart | Model, Blacklist: {BasePart}) -- Weld the object to other objects around it. Can specify a table of parts not to weld to with Blacklist.
-	local Whitelist: {BasePart} = game:GetService("CollectionService"):GetTagged("Weldable") -- Only check Weldable objects.
+function Module:Weld(Object: BasePart | Model, Blacklist: {BasePart}): boolean -- Weld the object to other objects around it. Can specify a table of parts not to weld to with Blacklist.
+	local Whitelist: {[BasePart]: boolean} = WeldableCache -- Only check Weldable objects.
 	
 	-- Do not weld to objects in its own model.
 	if Object:IsA("Model") then
@@ -244,35 +239,24 @@ function Module:MakeJoints(Object: BasePart | Model, Blacklist: {BasePart}) -- W
 	
 	-- Remove objects specified in the Blacklist.
 	if Blacklist then
-		for _, Whitelisted in Whitelist do
-			for _, Blacklisted in Blacklist do
-				local Result: number? = table.find(Whitelist, Blacklisted)
-				if Result then
-					table.remove(Whitelist, Result)
-				end
-			end
+		for _, Blacklisted in Blacklist do
+			Whitelist[Blacklisted] = nil
 		end
 	end
 	
+	local WhitelistTable: {BasePart} = {}
+	for Whitelisted, _ in Whitelist do
+		table.insert(WhitelistTable, Whitelisted)
+	end
+	
 	if Object:IsA("BasePart") then -- Check if Object is a BasePart.
-		Weld(Object, Whitelist) -- Weld the Object.
+		Weld(Object, Whitelist, WhitelistTable) -- Weld the Object.
 	elseif Object:IsA("Model") then -- Check if Object is a Model.
-		local Descendants: {Instance} = Object:GetDescendants()
-		
-		local Count: number = 0
-		
-		for _, SubObject in Descendants do -- Loop through descendants in the model.
-			task.spawn(function()
-				if SubObject:IsA("BasePart") and SubObject ~= Object.PrimaryPart then -- Check the SubObject is a BasePart & is not the PrimaryPart.
-					Weld(SubObject, Whitelist) -- Weld the Object.
-				end
-				
-				Count += 1
-			end)
+		for _, SubObject in Object:GetDescendants() do -- Loop through descendants in the model.
+			if SubObject:IsA("BasePart") and SubObject ~= Object.PrimaryPart then -- Check the SubObject is a BasePart & is not the PrimaryPart.
+				Weld(SubObject, Whitelist, WhitelistTable) -- Weld the Object.
+			end
 		end
-		
-		local CountTarget: number = #Descendants
-		repeat task.wait() until Count == CountTarget -- Wait for all threads to finish.
 	end
 	
 	return true
