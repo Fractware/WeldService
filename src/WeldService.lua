@@ -151,7 +151,7 @@ function Module:GetWelded(Object: BasePart): {[BasePart]: boolean} -- Get Object
 	elseif Object:IsA("Model") then -- Check if Object is a Model.
 		for _, SubObject in Object:GetDescendants() do -- Loop through descendants in the model.
 			if SubObject:IsA("BasePart") then -- Check the SubObject is a BasePart.
-				for _, SubWeldedObject in Module:GetWelded(SubObject) do -- Loop through the objects welded to SubObject.
+				for SubWeldedObject, _ in Module:GetWelded(SubObject) do -- Loop through the objects welded to SubObject.
 					WeldedObjects[SubWeldedObject] = true -- Add to the WeldedParts.
 				end
 			end
