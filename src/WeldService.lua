@@ -96,27 +96,12 @@ for _, Weld in game:GetService("CollectionService"):GetTagged("PartWelds") do
 	AddWeld(Weld)
 end
 
-game:GetService("CollectionService"):GetInstanceAddedSignal("PartWelds"):Connect(function(Weld: WeldConstraint)  -- Detect when weld is added.
-	AddWeld(Weld)
-end)
-
-game:GetService("CollectionService"):GetInstanceRemovedSignal("PartWelds"):Connect(function(Weld: WeldConstraint) -- Detect when weld is removed.
-	RemoveWeld(Weld)
-end)
+game:GetService("CollectionService"):GetInstanceAddedSignal("PartWelds"):Connect(AddWeld)  -- Detect when weld is added.
+game:GetService("CollectionService"):GetInstanceRemovedSignal("PartWelds"):Connect(RemoveWeld) -- Detect when weld is removed.
 
 local function Unweld(Object: BasePart) -- Remove welds from specified Object.
 	if LinkCache[Object] then -- Check Object is in WeldCache.
 		for OtherObject, Weld in LinkCache[Object] do -- Loop through welds in the Object.
-			--[[
-			local Sound: Sound = script.Break:Clone()
-			Sound.Parent = Object
-			Sound:Play()
-			task.spawn(function()
-				Sound.Ended:Wait()
-				Sound:Destroy()
-			end)
-			--]]
-			
 			Weld:Destroy() -- Remove the weld.
 		end
 	end
