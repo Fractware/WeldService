@@ -17,11 +17,11 @@ for _, Weldable in game:GetService("CollectionService"):GetTagged("Weldable") do
 	WeldableCache[Weldable] = true
 end
 
-game:GetService("CollectionService"):GetInstanceAddedSignal("Weldable"):Connect(function(Weldable)
+game:GetService("CollectionService"):GetInstanceAddedSignal("Weldable"):Connect(function(Weldable: BasePart)
 	WeldableCache[Weldable] = true
 end)
 
-game:GetService("CollectionService"):GetInstanceRemovedSignal("Weldable"):Connect(function(Weldable)
+game:GetService("CollectionService"):GetInstanceRemovedSignal("Weldable"):Connect(function(Weldable: BasePart)
 	WeldableCache[Weldable] = nil
 end)
 
