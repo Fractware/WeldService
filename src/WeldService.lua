@@ -8,9 +8,8 @@ local Module = {
 	OuterPadding = 0.1, -- Ignore everything past this point outside the object. (Weld slightly around the object)
 }
 
-local LinkCache: {[BasePart]: {[BasePart]: WeldConstraint}} = {}
 local ConnectionCache: {[WeldConstraint]: {[any]: RBXScriptConnection}} = {}
-
+local LinkCache: {[BasePart]: {[BasePart]: WeldConstraint}} = {}
 local WeldableCache: {[BasePart]: boolean} = {}
 
 for _, Weldable in game:GetService("CollectionService"):GetTagged("Weldable") do
