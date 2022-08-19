@@ -169,10 +169,12 @@ local function Weld(Object: BasePart, Whitelist: {[BasePart]: boolean}, Whitelis
 	-- Welding.
 	local InnerPadding: number = Module.InnerPadding -- Cache InnerPadding as a variable.
 	local OuterPadding: number = Module.OuterPadding -- Cache OuterPadding as a variable.
+	
+	local ObjectSize: Vector3 = Object.Size
 	local Sizes: {Vector3} = {
-		Object.Size + Vector3.new(OuterPadding, -InnerPadding, -InnerPadding),
-		Object.Size + Vector3.new(-InnerPadding, OuterPadding, -InnerPadding),
-		Object.Size + Vector3.new(-InnerPadding, -InnerPadding, OuterPadding),
+		ObjectSize + Vector3.new(OuterPadding, -InnerPadding, -InnerPadding),
+		ObjectSize + Vector3.new(-InnerPadding, OuterPadding, -InnerPadding),
+		ObjectSize + Vector3.new(-InnerPadding, -InnerPadding, OuterPadding),
 	}
 	
 	local FoundObjects: {BasePart} = {}
