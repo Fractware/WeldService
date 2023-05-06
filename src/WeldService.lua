@@ -99,10 +99,10 @@ game:GetService("CollectionService"):GetInstanceAddedSignal("PartWelds"):Connect
 game:GetService("CollectionService"):GetInstanceRemovedSignal("PartWelds"):Connect(RemoveWeld) -- Detect when weld is removed.
 
 local function Unweld(Object: BasePart) -- Remove welds from specified Object.
-	if LinkCache[Object] then -- Check Object is in WeldCache.
-		for OtherObject, Weld in LinkCache[Object] do -- Loop through welds in the Object.
-			Weld:Destroy() -- Remove the weld.
-		end
+	if LinkCache[Object] then return end -- Check Object is in WeldCache.
+	
+	for OtherObject, Weld in LinkCache[Object] do -- Loop through welds in the Object.
+		Weld:Destroy() -- Remove the weld.
 	end
 end
 
@@ -110,12 +110,11 @@ function Module:Unweld(Object: BasePart | Model): boolean -- Remove welds from s
 	if Object then -- Check object was passed.
 		if Object:IsA("BasePart") then -- Check if Object is a BasePart.
 			Unweld(Object) -- Break the joints of the Object.
-		elseif Object:IsA("Model") then -- Check if Object is a Model.
+		elseif Object.ClassName == "Model" then -- Check if Object is a Model.
 			-- Remove welds from descendants in the model.
 			for _, SubObject in Object:GetDescendants() do -- Loop through descendants in the model.
-				if SubObject:IsA("BasePart") then -- Check the SubObject is a BasePart.
-					Unweld(SubObject) -- Break the joints of the descendant.
-				end
+				if not SubObject:IsA("BasePart") then continue end -- Check the SubObject is a BasePart.
+				Unweld(SubObject) -- Break the joints of the descendant.
 			end
 		end
 	end
@@ -132,12 +131,11 @@ function Module:GetWelded(Object: BasePart): {[BasePart]: boolean} -- Get Object
 				WeldedObjects[OtherObject] = true -- Add to the WeldedParts.
 			end
 		end
-	elseif Object:IsA("Model") then -- Check if Object is a Model.
+	elseif Object.ClassName == "Model" then -- Check if Object is a Model.
 		for _, SubObject in Object:GetDescendants() do -- Loop through descendants in the model.
-			if SubObject:IsA("BasePart") then -- Check the SubObject is a BasePart.
-				for SubWeldedObject, _ in Module:GetWelded(SubObject) do -- Loop through the objects welded to SubObject.
-					WeldedObjects[SubWeldedObject] = true -- Add to the WeldedParts.
-				end
+			if not SubObject:IsA("BasePart") then continue end -- Check the SubObject is a BasePart.
+			for SubWeldedObject, _ in Module:GetWelded(SubObject) do -- Loop through the objects welded to SubObject.
+				WeldedObjects[SubWeldedObject] = true -- Add to the WeldedParts.
 			end
 		end
 	end
@@ -147,9 +145,9 @@ end
 
 -- Setup the OverlapParameters for welding.
 local OverlapParameters: OverlapParams = OverlapParams.new()
-OverlapParameters.FilterType = Enum.RaycastFilterType.Whitelist
+OverlapParameters.FilterType = Enum.RaycastFilterType.Include
 
-local function Weld(Object: BasePart, Whitelist: {[BasePart]: boolean}, WhitelistTable: {BasePart}) -- Weld the object to other objects around it. Can specify a table of objects not to weld to with Blacklist.	
+local function Weld(Object: BasePart, Include: {[BasePart]: boolean}, IncludeTable: {BasePart}) -- Weld the object to other objects around it. Can specify a table of objects not to weld to with Exclude.	
 	-- Check for existing welds & ignore those objects.
 	local ExistingWelds: {WeldConstraint} = {}
 	if LinkCache[Object] then
@@ -158,13 +156,13 @@ local function Weld(Object: BasePart, Whitelist: {[BasePart]: boolean}, Whitelis
 		end
 	end
 	
-	-- Remove ExistingWelds from the Whitelist.
+	-- Remove ExistingWelds from the Include.
 	for _, ExistingWeld in ExistingWelds do
-		Whitelist[ExistingWeld.Part0] = nil
-		Whitelist[ExistingWeld.Part1] = nil
+		Include[ExistingWeld.Part0] = nil
+		Include[ExistingWeld.Part1] = nil
 	end
 	
-	OverlapParameters.FilterDescendantsInstances = WhitelistTable -- Set the OverlapParameters to only check the Whitelist.
+	OverlapParameters.FilterDescendantsInstances = IncludeTable -- Set the OverlapParameters to only check the Include.
 	
 	-- Welding.
 	local InnerPadding: number = Module.InnerPadding -- Cache InnerPadding as a variable.
@@ -186,7 +184,9 @@ local function Weld(Object: BasePart, Whitelist: {[BasePart]: boolean}, Whitelis
 			local AnchoredWeldCheckPass: boolean = true
 			
 			if not Module.CanWeldAnchored then
-				local IsAnchoredWeld: boolean = Object.Anchored and Touching.Anchored
+				local ObjectAnchored: boolean = Object.Anchored and string.find(Object.Name, "Anchored") and not string.find(Object.Name, "Toggle")
+				local TouchingAnchored: boolean = Touching.Anchored and string.find(Touching.Name, "Anchored") and not string.find(Touching.Name, "Toggle")
+				local IsAnchoredWeld: boolean = ObjectAnchored and TouchingAnchored
 				AnchoredWeldCheckPass = if Module.CanWeldAnchored then true elseif not Module.CanWeldAnchored and not IsAnchoredWeld then true else false
 			end
 			
@@ -208,38 +208,36 @@ local function Weld(Object: BasePart, Whitelist: {[BasePart]: boolean}, Whitelis
 	end
 end
 
-function Module:Weld(Object: BasePart | Model, Blacklist: {BasePart}): boolean -- Weld the object to other objects around it. Can specify a table of parts not to weld to with Blacklist.
-	local Whitelist: {[BasePart]: boolean} = WeldableCache -- Only check Weldable objects.
+function Module:Weld(Object: BasePart | Model, Exclude: {BasePart}): boolean -- Weld the object to other objects around it. Can specify a table of parts not to weld to with Exclude.
+	local Include: {[BasePart]: boolean} = WeldableCache -- Only check Weldable objects.
 	
 	-- Do not weld to objects in its own model.
-	if Object:IsA("Model") then
-		Blacklist = Blacklist or {}
+	if Object.ClassName == "Model" then
+		Exclude = Exclude or {}
 		for _, Descendant in Object:GetDescendants() do
-			if Descendant:IsA("BasePart") then
-				table.insert(Blacklist, Descendant)
-			end
+			if not Descendant:IsA("BasePart") then continue end
+			table.insert(Exclude, Descendant)
 		end
 	end
 	
-	-- Remove objects specified in the Blacklist.
-	if Blacklist then
-		for _, Blacklisted in Blacklist do
-			Whitelist[Blacklisted] = nil
+	-- Remove objects specified in the Exclude.
+	if Exclude then
+		for _, Excluded in Exclude do
+			Include[Excluded] = nil
 		end
 	end
 	
-	local WhitelistTable: {BasePart} = {}
-	for Whitelisted, _ in Whitelist do
-		table.insert(WhitelistTable, Whitelisted)
+	local IncludeTable: {BasePart} = {}
+	for Included, _ in Include do
+		table.insert(IncludeTable, Included)
 	end
 	
 	if Object:IsA("BasePart") then -- Check if Object is a BasePart.
-		Weld(Object, Whitelist, WhitelistTable) -- Weld the Object.
-	elseif Object:IsA("Model") then -- Check if Object is a Model.
+		Weld(Object, Include, IncludeTable) -- Weld the Object.
+	elseif Object.ClassName == "Model" then -- Check if Object is a Model.
 		for _, SubObject in Object:GetDescendants() do -- Loop through descendants in the model.
-			if SubObject:IsA("BasePart") and SubObject ~= Object.PrimaryPart then -- Check the SubObject is a BasePart & is not the PrimaryPart.
-				Weld(SubObject, Whitelist, WhitelistTable) -- Weld the Object.
-			end
+			if not (SubObject:IsA("BasePart") and SubObject == Object.PrimaryPart) then continue end -- Check the SubObject is a BasePart & is not the PrimaryPart.
+			Weld(SubObject, Include, IncludeTable) -- Weld the Object.
 		end
 	end
 	
