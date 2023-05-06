@@ -184,8 +184,8 @@ local function Weld(Object: BasePart, Include: {[BasePart]: boolean}, IncludeTab
 			local AnchoredWeldCheckPass: boolean = true
 			
 			if not Module.CanWeldAnchored then
-				local ObjectAnchored: boolean = Object.Anchored and string.find(Object.Name, "Anchored") and not string.find(Object.Name, "Toggle")
-				local TouchingAnchored: boolean = Touching.Anchored and string.find(Touching.Name, "Anchored") and not string.find(Touching.Name, "Toggle")
+				local ObjectAnchored: boolean = Object.Anchored
+				local TouchingAnchored: boolean = Touching.Anchored
 				local IsAnchoredWeld: boolean = ObjectAnchored and TouchingAnchored
 				AnchoredWeldCheckPass = if Module.CanWeldAnchored then true elseif not Module.CanWeldAnchored and not IsAnchoredWeld then true else false
 			end
