@@ -99,7 +99,7 @@ game:GetService("CollectionService"):GetInstanceAddedSignal("PartWelds"):Connect
 game:GetService("CollectionService"):GetInstanceRemovedSignal("PartWelds"):Connect(RemoveWeld) -- Detect when weld is removed.
 
 local function Unweld(Object: BasePart) -- Remove welds from specified Object.
-	if LinkCache[Object] then return end -- Check Object is in WeldCache.
+	if not LinkCache[Object] then return end -- Check Object is in WeldCache.
 	
 	for OtherObject, Weld in LinkCache[Object] do -- Loop through welds in the Object.
 		Weld:Destroy() -- Remove the weld.
