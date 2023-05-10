@@ -107,15 +107,15 @@ local function Unweld(Object: BasePart) -- Remove welds from specified Object.
 end
 
 function Module:Unweld(Object: BasePart | Model): boolean -- Remove welds from specified Object. (Usable API)
-	if Object then -- Check object was passed.
-		if Object:IsA("BasePart") then -- Check if Object is a BasePart.
-			Unweld(Object) -- Break the joints of the Object.
-		elseif Object.ClassName == "Model" then -- Check if Object is a Model.
-			-- Remove welds from descendants in the model.
-			for _, SubObject in Object:GetDescendants() do -- Loop through descendants in the model.
-				if not SubObject:IsA("BasePart") then continue end -- Check the SubObject is a BasePart.
-				Unweld(SubObject) -- Break the joints of the descendant.
-			end
+	if not Object then return true end -- Check object was passed.
+	
+	if Object:IsA("BasePart") then -- Check if Object is a BasePart.
+		Unweld(Object) -- Break the joints of the Object.
+	elseif Object.ClassName == "Model" then -- Check if Object is a Model.
+		-- Remove welds from descendants in the model.
+		for _, SubObject in Object:GetDescendants() do -- Loop through descendants in the model.
+			if not SubObject:IsA("BasePart") then continue end -- Check the SubObject is a BasePart.
+			Unweld(SubObject) -- Break the joints of the descendant.
 		end
 	end
 	
