@@ -1,5 +1,8 @@
 --!strict
 
+local CollectionService = game:GetService("CollectionService")
+local WorkspaceService = game:GetService("Workspace")
+
 local Module = {
 	CanWeldAnchored = false, -- Can anchored objects weld to other anchored objects.
 	
@@ -12,15 +15,17 @@ local ConnectionCache: {[WeldConstraint]: {[any]: RBXScriptConnection}} = {}
 local LinkCache: {[BasePart]: {[BasePart]: WeldConstraint}} = {}
 local WeldableCache: {[BasePart]: boolean} = {}
 
-for _, Weldable in game:GetService("CollectionService"):GetTagged("Weldable") do
+for _, Weldable in CollectionService:GetTagged("Weldable") do
+	if not Weldable:IsDescendantOf(WorkspaceService) then continue end
 	WeldableCache[Weldable] = true
 end
 
-game:GetService("CollectionService"):GetInstanceAddedSignal("Weldable"):Connect(function(Weldable: BasePart)
+CollectionService:GetInstanceAddedSignal("Weldable"):Connect(function(Weldable: BasePart)
+	if not Weldable:IsDescendantOf(WorkspaceService) then return end
 	WeldableCache[Weldable] = true
 end)
 
-game:GetService("CollectionService"):GetInstanceRemovedSignal("Weldable"):Connect(function(Weldable: BasePart)
+CollectionService:GetInstanceRemovedSignal("Weldable"):Connect(function(Weldable: BasePart)
 	WeldableCache[Weldable] = nil
 end)
 
@@ -81,7 +86,7 @@ local function RemoveLinkCache(Weld: WeldConstraint)
 	end
 end
 
-local function AddWeld(Weld: WeldConstraint) -- Setup the weld.	
+local function AddWeld(Weld: WeldConstraint) -- Setup the weld.
 	AddConnectionCache(Weld) -- Add weld to WeldConnections.
 	AddLinkCache(Weld) -- Add weld to WeldCache.
 end
@@ -91,12 +96,12 @@ local function RemoveWeld(Weld: WeldConstraint) -- Remove the weld.
 	RemoveLinkCache(Weld) -- Remove from WeldCache.
 end
 
-for _, Weld in game:GetService("CollectionService"):GetTagged("PartWelds") do
+for _, Weld in CollectionService:GetTagged("PartWelds") do
 	AddWeld(Weld)
 end
 
-game:GetService("CollectionService"):GetInstanceAddedSignal("PartWelds"):Connect(AddWeld)  -- Detect when weld is added.
-game:GetService("CollectionService"):GetInstanceRemovedSignal("PartWelds"):Connect(RemoveWeld) -- Detect when weld is removed.
+CollectionService:GetInstanceAddedSignal("PartWelds"):Connect(AddWeld)  -- Detect when weld is added.
+CollectionService:GetInstanceRemovedSignal("PartWelds"):Connect(RemoveWeld) -- Detect when weld is removed.
 
 local function Unweld(Object: BasePart) -- Remove welds from specified Object.
 	if not LinkCache[Object] then return end -- Check Object is in WeldCache.
@@ -147,19 +152,21 @@ end
 local OverlapParameters: OverlapParams = OverlapParams.new()
 OverlapParameters.FilterType = Enum.RaycastFilterType.Include
 
-local function Weld(Object: BasePart, Include: {[BasePart]: boolean}, IncludeTable: {BasePart}) -- Weld the object to other objects around it. Can specify a table of objects not to weld to with Exclude.	
-	-- Check for existing welds & ignore those objects.
-	local ExistingWelds: {WeldConstraint} = {}
-	if LinkCache[Object] then
-		for OtherObject, Weld in LinkCache[Object] do
-			table.insert(ExistingWelds, Weld)
-		end
+local function Weld(Object: BasePart, Exclude: {BasePart}) -- Weld the object to other objects around it. Can specify a table of objects not to weld to with Exclude.	
+	local IncludeTable: {BasePart} = {}
+	
+	for Include, _ in WeldableCache do
+		if table.find(Exclude, Include) then continue end -- Skip if marked as excluded.
+		table.insert(IncludeTable, Include)
 	end
 	
-	-- Remove ExistingWelds from the Include.
-	for _, ExistingWeld in ExistingWelds do
-		Include[ExistingWeld.Part0] = nil
-		Include[ExistingWeld.Part1] = nil
+	-- Check for existing welds & ignore those objects.
+	if LinkCache[Object] then
+		for OtherObject, ExistingWeld in LinkCache[Object] do
+			-- Remove ExistingWelds from the Include.
+			IncludeTable[ExistingWeld.Part0] = nil
+			IncludeTable[ExistingWeld.Part1] = nil
+		end
 	end
 	
 	OverlapParameters.FilterDescendantsInstances = IncludeTable -- Set the OverlapParameters to only check the Include.
@@ -178,7 +185,7 @@ local function Weld(Object: BasePart, Include: {[BasePart]: boolean}, IncludeTab
 	local FoundObjects: {BasePart} = {}
 	
 	for _, Size in Sizes do -- Loop through each axis.
-		local TouchingObjects: {BasePart} = game:GetService("Workspace"):GetPartBoundsInBox(Object.CFrame, Size, OverlapParameters)
+		local TouchingObjects: {BasePart} = WorkspaceService:GetPartBoundsInBox(Object.CFrame, Size, OverlapParameters)
 		
 		for _, Touching in TouchingObjects do -- Loop through each object within welding distance.
 			local AnchoredWeldCheckPass: boolean = true
@@ -186,18 +193,17 @@ local function Weld(Object: BasePart, Include: {[BasePart]: boolean}, IncludeTab
 			if not Module.CanWeldAnchored then
 				local ObjectAnchored: boolean = Object.Anchored
 				local TouchingAnchored: boolean = Touching.Anchored
-				local IsAnchoredWeld: boolean = ObjectAnchored and TouchingAnchored
-				AnchoredWeldCheckPass = if Module.CanWeldAnchored then true elseif not Module.CanWeldAnchored and not IsAnchoredWeld then true else false
+				AnchoredWeldCheckPass = not (ObjectAnchored and TouchingAnchored)
 			end
 			
-			if Object ~= Touching and AnchoredWeldCheckPass and not table.find(FoundObjects, Touching) then
+			if AnchoredWeldCheckPass and not table.find(FoundObjects, Touching) then
 				table.insert(FoundObjects, Touching) -- Do not allow checks to create multiple welds to this object.
 				
 				-- Create the weld.
 				local NewWeld: WeldConstraint = Instance.new("WeldConstraint")
 				NewWeld.Part0 = Object
 				NewWeld.Part1 = Touching
-				game:GetService("CollectionService"):AddTag(NewWeld, "PartWelds")
+				NewWeld:AddTag("PartWelds")
 				NewWeld.Parent = Object
 				
 				NewWeld.Part1.Destroying:Connect(function()
@@ -209,35 +215,24 @@ local function Weld(Object: BasePart, Include: {[BasePart]: boolean}, IncludeTab
 end
 
 function Module:Weld(Object: BasePart | Model, Exclude: {BasePart}): boolean -- Weld the object to other objects around it. Can specify a table of parts not to weld to with Exclude.
-	local Include: {[BasePart]: boolean} = WeldableCache -- Only check Weldable objects.
+	local Exclude: {BasePart} = Exclude or {}
 	
 	-- Do not weld to objects in its own model.
 	if Object.ClassName == "Model" then
-		Exclude = Exclude or {}
 		for _, Descendant in Object:GetDescendants() do
 			if not Descendant:IsA("BasePart") then continue end
 			table.insert(Exclude, Descendant)
 		end
-	end
-	
-	-- Remove objects specified in the Exclude.
-	if Exclude then
-		for _, Excluded in Exclude do
-			Include[Excluded] = nil
-		end
-	end
-	
-	local IncludeTable: {BasePart} = {}
-	for Included, _ in Include do
-		table.insert(IncludeTable, Included)
+	elseif Object:IsA("BasePart") then
+		table.insert(Exclude, Object) -- Skip checking itself.
 	end
 	
 	if Object:IsA("BasePart") then -- Check if Object is a BasePart.
-		Weld(Object, Include, IncludeTable) -- Weld the Object.
+		Weld(Object, Exclude) -- Weld the Object.
 	elseif Object.ClassName == "Model" then -- Check if Object is a Model.
 		for _, SubObject in Object:GetDescendants() do -- Loop through descendants in the model.
-			if not (SubObject:IsA("BasePart") and SubObject == Object.PrimaryPart) then continue end -- Check the SubObject is a BasePart & is not the PrimaryPart.
-			Weld(SubObject, Include, IncludeTable) -- Weld the Object.
+			if not SubObject:IsA("BasePart") then continue end -- Check the SubObject is a BasePart & is not the PrimaryPart.
+			Weld(SubObject, Exclude) -- Weld the Object.
 		end
 	end
 	
