@@ -100,7 +100,7 @@ for _, Weld in CollectionService:GetTagged("PartWelds") do
 	AddWeld(Weld)
 end
 
-CollectionService:GetInstanceAddedSignal("PartWelds"):Connect(AddWeld)  -- Detect when weld is added.
+CollectionService:GetInstanceAddedSignal("PartWelds"):Connect(AddWeld) -- Detect when weld is added.
 CollectionService:GetInstanceRemovedSignal("PartWelds"):Connect(RemoveWeld) -- Detect when weld is removed.
 
 local function Unweld(Object: BasePart) -- Remove welds from specified Object.
