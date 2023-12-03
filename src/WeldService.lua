@@ -32,14 +32,12 @@ end)
 local function AddConnectionCache(Weld: WeldConstraint)
 	ConnectionCache[Weld] = { -- Append to the WeldConnections dictionary.
 		Part0 = Weld:GetPropertyChangedSignal("Part0"):Connect(function() -- Check for Part0 changes.
-			if Weld.Part0 == nil then -- Check if Part0 is nil.
-				Weld:Destroy() -- Remove weld.
-			end
+			if Weld.Part0 ~= nil then return end -- Check if Part0 is nil.
+			Weld:Destroy() -- Remove weld.
 		end),
 		Part1 = Weld:GetPropertyChangedSignal("Part1"):Connect(function() -- Check for Part1 changes.
-			if Weld.Part1 == nil then -- Check if Part1 is nil.
-				Weld:Destroy() -- Remove weld.
-			end
+			if Weld.Part1 ~= nil then return end -- Check if Part1 is nil.
+			Weld:Destroy() -- Remove weld.
 		end),
 	}
 end
