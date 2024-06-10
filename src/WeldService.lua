@@ -1,7 +1,4 @@
---!strict
-
-local CollectionService = game:GetService("CollectionService")
-local WorkspaceService = game:GetService("Workspace")
+--!native
 
 local Module = {
 	CanWeldAnchored = false, -- Can anchored objects weld to other anchored objects.
@@ -14,20 +11,6 @@ local Module = {
 local ConnectionCache: {[WeldConstraint]: {[any]: RBXScriptConnection}} = {}
 local LinkCache: {[BasePart]: {[BasePart]: WeldConstraint}} = {}
 local WeldableCache: {[BasePart]: boolean} = {}
-
-for _, Weldable in CollectionService:GetTagged("Weldable") do
-	if not Weldable:IsDescendantOf(WorkspaceService) then continue end
-	WeldableCache[Weldable] = true
-end
-
-CollectionService:GetInstanceAddedSignal("Weldable"):Connect(function(Weldable: BasePart)
-	if not Weldable:IsDescendantOf(WorkspaceService) then return end
-	WeldableCache[Weldable] = true
-end)
-
-CollectionService:GetInstanceRemovedSignal("Weldable"):Connect(function(Weldable: BasePart)
-	WeldableCache[Weldable] = nil
-end)
 
 local function AddConnectionCache(Weld: WeldConstraint)
 	ConnectionCache[Weld] = { -- Append to the WeldConnections dictionary.
@@ -43,8 +26,8 @@ local function AddConnectionCache(Weld: WeldConstraint)
 end
 
 local function RemoveConnectionCache(Weld: WeldConstraint)
-	ConnectionCache[Weld].Part0:Disconnect() -- Disconnect Part0 changed connection.
-	ConnectionCache[Weld].Part1:Disconnect() -- Disconnect Part1 changed connection.
+	ConnectionCache[Weld].Part0:Disconnect() ConnectionCache[Weld].Part0 = nil -- Disconnect Part0 changed connection.
+	ConnectionCache[Weld].Part1:Disconnect() ConnectionCache[Weld].Part1 = nil -- Disconnect Part1 changed connection.
 	ConnectionCache[Weld] = nil -- Remove from WeldConnections dictionary.
 end
 
@@ -94,12 +77,28 @@ local function RemoveWeld(Weld: WeldConstraint) -- Remove the weld.
 	RemoveLinkCache(Weld) -- Remove from WeldCache.
 end
 
-for _, Weld in CollectionService:GetTagged("PartWelds") do
-	AddWeld(Weld)
+if game:GetService("RunService"):IsServer() then
+	for _, Weldable in game:GetService("CollectionService"):GetTagged("Weldable") do
+		if not Weldable:IsDescendantOf(workspace) then continue end
+		WeldableCache[Weldable] = true
+	end
+	
+	game:GetService("CollectionService"):GetInstanceAddedSignal("Weldable"):Connect(function(Weldable: BasePart)
+		if not Weldable:IsDescendantOf(workspace) then return end
+		WeldableCache[Weldable] = true
+	end)
+	
+	game:GetService("CollectionService"):GetInstanceRemovedSignal("Weldable"):Connect(function(Weldable: BasePart)
+		WeldableCache[Weldable] = nil
+	end)
+	
+	for _, Weld in game:GetService("CollectionService"):GetTagged("PartWelds") do
+		AddWeld(Weld)
+	end
+	
+	game:GetService("CollectionService"):GetInstanceAddedSignal("PartWelds"):Connect(AddWeld) -- Detect when weld is added.
+	game:GetService("CollectionService"):GetInstanceRemovedSignal("PartWelds"):Connect(RemoveWeld) -- Detect when weld is removed.
 end
-
-CollectionService:GetInstanceAddedSignal("PartWelds"):Connect(AddWeld) -- Detect when weld is added.
-CollectionService:GetInstanceRemovedSignal("PartWelds"):Connect(RemoveWeld) -- Detect when weld is removed.
 
 local function Unweld(Object: BasePart) -- Remove welds from specified Object.
 	if not LinkCache[Object] then return end -- Check Object is in WeldCache.
@@ -146,6 +145,14 @@ function Module:GetWelded(Object: BasePart): {[BasePart]: boolean} -- Get Object
 	return WeldedObjects -- Return the welded objects.
 end
 
+function Module:HasWeld(A: BasePart, B: BasePart): boolean -- Check if 2 objects are welded together.
+	if LinkCache[A] then -- Check Object is in the WeldCache.
+		if LinkCache[A][B] then return true end -- Found a weld between the objects.
+	end
+	
+	return false
+end
+
 -- Setup the OverlapParameters for welding.
 local OverlapParameters: OverlapParams = OverlapParams.new()
 OverlapParameters.FilterType = Enum.RaycastFilterType.Include
@@ -183,7 +190,7 @@ local function Weld(Object: BasePart, Exclude: {BasePart}) -- Weld the object to
 	local FoundObjects: {BasePart} = {}
 	
 	for _, Size in Sizes do -- Loop through each axis.
-		local TouchingObjects: {BasePart} = WorkspaceService:GetPartBoundsInBox(Object.CFrame, Size, OverlapParameters)
+		local TouchingObjects: {BasePart} = workspace:GetPartBoundsInBox(Object.CFrame, Size, OverlapParameters)
 		
 		for _, Touching in TouchingObjects do -- Loop through each object within welding distance.
 			local AnchoredWeldCheckPass: boolean = true
@@ -229,7 +236,7 @@ function Module:Weld(Object: BasePart | Model, Exclude: {BasePart}): boolean -- 
 		Weld(Object, Exclude) -- Weld the Object.
 	elseif Object.ClassName == "Model" then -- Check if Object is a Model.
 		for _, SubObject in Object:GetDescendants() do -- Loop through descendants in the model.
-			if not SubObject:IsA("BasePart") then continue end -- Check the SubObject is a BasePart & is not the PrimaryPart.
+			if not SubObject:IsA("BasePart") then continue end -- Check the SubObject is a BasePart.
 			Weld(SubObject, Exclude) -- Weld the Object.
 		end
 	end
