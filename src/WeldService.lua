@@ -180,11 +180,11 @@ local function Weld(Object: BasePart, Exclude: {BasePart}) -- Weld the object to
 	local InnerPadding: number = Module.InnerPadding -- Cache InnerPadding as a variable.
 	local OuterPadding: number = Module.OuterPadding -- Cache OuterPadding as a variable.
 	
-	local ObjectSize: Vector3 = Object.Size
-	local Sizes: {Vector3} = {
-		ObjectSize + Vector3.new(OuterPadding, -InnerPadding, -InnerPadding),
-		ObjectSize + Vector3.new(-InnerPadding, OuterPadding, -InnerPadding),
-		ObjectSize + Vector3.new(-InnerPadding, -InnerPadding, OuterPadding),
+	local ObjectSize: vector = Object.Size
+	local Sizes: {vector} = {
+		ObjectSize + vector.create(OuterPadding, -InnerPadding, -InnerPadding),
+		ObjectSize + vector.create(-InnerPadding, OuterPadding, -InnerPadding),
+		ObjectSize + vector.create(-InnerPadding, -InnerPadding, OuterPadding),
 	}
 	
 	local FoundObjects: {BasePart} = {}
